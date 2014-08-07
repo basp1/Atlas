@@ -1,0 +1,12 @@
+﻿namespace ${namespace} {
+
+using System;
+using Atlas.Core;
+
+public enum ${name} {
+#foreach($value in $values)
+    ${value},
+#end
+
+}
+}

@@ -1,0 +1,89 @@
+namespace ${namespace} {
+
+using System;
+using Atlas.Core;
+
+public
+#if(${class.Abstract}) abstract #end
+class $class.Id
+#if(${class.Parent.Count} > 0) : ${class.Parent.First.Id} #elseif("CIMDatatype" != ${class.Stereotype}) : $root #end
+{
+#if("CIMDatatype" == ${class.Stereotype})
+    #if(${class.ValueType})
+        public ${class.Id}(${class.ValueType} value) {
+            this._Value = value;
+        }
+	#end
+	public ${class.Id}() { }
+#else
+    #if(${class.ValueType})
+        public ${class.Id}(${class.ValueType} value) : base() {
+            this._Value = value;
+        }
+	#end
+    public ${class.Id}(Snapshot snapshot, string id) : base(snapshot, id) {}
+	public ${class.Id}() : base() { }
+#end
+                
+#foreach ($name in ${class.Fields.Keys})
+    #set($field = ${class.Fields.get_Item($name)})
+	
+	#if($classes.ContainsKey($field.Type))
+	    #set($class1 = $classes.get_Item($field.Type))
+
+		#if($class1.Defined || $class1.Primitive)
+			#if(${field.Description})
+			    /* ${field.Description} */
+			#end
+            #if(${field.InitialValue})
+                #if(${class1.ValueType})
+                    private ${field.Type} _${name} = new ${field.Type}(${field.InitialValue});
+                #elseif("enum" == ${class1.Stereotype})
+                    private ${field.Type} _${name} = ${field.Type}.${field.InitialValue};
+                #elseif("String" == $class1.Id)
+                    private ${field.Type} _${name} = "${field.InitialValue}";
+                #else
+                    private ${field.Type} _${name} = ${field.InitialValue};
+			    #end
+            #else
+                private ${field.Type} _${name};
+            #end
+
+			public ${field.Type} ${name} {get;set;}
+		#end
+
+	#end
+#end
+
+#foreach ($name in $class.Associations.Keys)
+    #set($assoc = $class.Associations.get_Item($name))
+
+    #if($classes.ContainsKey($assoc.EndClass) && $classes.get_Item($assoc.EndClass).Defined)
+        #set($type = "MappedList<$class.Id, $assoc.EndClass>")
+
+        #if(${class1.Description})
+		    /* ${assoc.Description} */
+		#end
+        public $type $name {get ; private set; }
+		public bool ShouldSerialize${name}() {
+            return null != ${name} && ${name}.Count > 0;
+        }
+    #end
+#end
+
+#if($class.Associations.Count > 0)
+    public override void initialize() {
+	    base.initialize();
+    #foreach ($name in $class.Associations.Keys)
+        #set($assoc = $class.Associations.get_Item($name))
+    
+        #if($classes.ContainsKey($assoc.EndClass) && $classes.get_Item($assoc.EndClass).Defined)
+            #set($type = "MappedList<$class.Id, $assoc.EndClass>")
+            this.${name} = new ${type}(this, (a,b) => b.${assoc.EndField}.UnsafeAdd(a));
+        #end
+    #end
+    }
+#end
+
+}
+}
